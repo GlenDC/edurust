@@ -40,7 +40,7 @@ use std::sync::mpsc;
 
 /// `PoolError` is the error used for any errors resulting
 /// from creating or using a [ThreadPool](self::ThreadPool).
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PoolError {
     /// The kind of error that happened,
     /// allowing you to handle the error appropriately.
@@ -51,7 +51,7 @@ pub struct PoolError {
 
 /// Defines the kind of error that happened related to the creation
 /// or usage of a [ThreadPool](self::ThreadPool).
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum PoolErrorKind {
     /// Indicates that a wrong size was used to create a
     /// [ThreadPool](self::ThreadPool), refer to the
@@ -146,6 +146,15 @@ impl Drop for ThreadPool {
     }
 }
 
+impl fmt::Debug for ThreadPool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let size = self.workers.len();
+        f.debug_struct("ThreadPool")
+         .field("size", &size)
+         .finish()
+    }
+}
+
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 enum Message {
@@ -181,5 +190,20 @@ impl Worker {
             id,
             thread: Some(thread),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invalid_size_pool() {
+        assert_eq!(ThreadPool::new(0).unwrap_err().kind, PoolErrorKind::InvalidSize);
+    }
+
+    #[test]
+    fn test_valid_size_pool() {
+        ThreadPool::new(1).unwrap();
     }
 }
