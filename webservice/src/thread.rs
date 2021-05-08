@@ -1,3 +1,36 @@
+//! Minimal implementation of a [ThreadPool](self::ThreadPool),
+//! allowing you to run different tasks in parallel,
+//! while at the same time remaining in control on the max amount
+//! of threads to be used at any given point.
+//! 
+//! 
+//! # Example
+//! 
+//! ```
+//! # use std::thread;
+//! # use std::time::{Duration, Instant};
+//! # use webservice::thread::Result;
+//! use webservice::thread::ThreadPool;
+//! 
+//! # fn main() -> Result<()> {
+//! # let start = Instant::now();
+//! println!("create pool and do some work");
+//! {
+//!     let pool = ThreadPool::new(2)?;
+//!     pool.execute(|| {
+//!         println!("heavy job #1");
+//!         thread::sleep(Duration::from_secs(1));
+//!     });
+//!     pool.execute(|| {
+//!         println!("heavy job #2");
+//!         thread::sleep(Duration::from_secs(1));
+//!     });
+//! }
+//! println!("all workers are done, total time since start: {}",  start.elapsed().as_secs());
+//! # Ok(())
+//! # }
+//! ```
+
 use std::fmt;
 use std::result;
 use std::thread;
@@ -29,7 +62,7 @@ pub enum PoolErrorKind {
 
 /// Result alias type used for all functions within this create which
 /// can fail in a recoverable fashion.
-type Result<T> = result::Result<T, PoolError>;
+pub type Result<T> = result::Result<T, PoolError>;
 
 impl fmt::Display for PoolError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
