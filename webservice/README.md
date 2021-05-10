@@ -6,9 +6,10 @@ Based on the "webservice" Rust Book project as found at:
 
 ## Extra Tasks
 
-- [X] Add more documentation to ThreadPool and its public methods.
-- [ ] Add signal handling to graceful handle such quit
+- [x] Add more documentation to ThreadPool and its public methods.
+- [x] Add signal handling to graceful handle such quit
 - [x] Add tests of the library’s ThreadPool functionality.
+- [x] Add decent logging support.
 - [ ] Add tests of the library’s HTTPServer functionality.
 - [x] Change calls to unwrap to more robust error handling.
 - [x] Move web server logic into library code;

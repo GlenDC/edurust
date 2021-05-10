@@ -33,10 +33,14 @@
 
 use std::io;
 use std::io::prelude::*;
+use std::time::Duration;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::mpsc;
 use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream};
+
+use log;
 
 pub mod thread;
 
@@ -73,6 +77,7 @@ pub type HTTPHandle = Box<dyn Fn(HTTPHandleCallback) -> io::Result<()> + Sync + 
 /// to handle the most simple HTTP calls.
 pub struct HTTPServer {
     handles: HashMap<String, HTTPHandle>,
+    shutdown: Option<mpsc::Receiver<()>>,
 }
 
 impl HTTPServer {
@@ -80,6 +85,7 @@ impl HTTPServer {
     pub fn new() -> HTTPServer {
         HTTPServer {
             handles: HashMap::new(),
+            shutdown: None,
         }
     }
 
@@ -97,33 +103,77 @@ impl HTTPServer {
         self.handles.insert(pattern, handle);
     }
 
+    pub fn set_shutdown(&mut self, r: mpsc::Receiver<()>) {
+        self.shutdown = Some(r);
+    }
+
     /// Listen on the given local TCP port for incoming requests,
     /// consuming this [HTTPServer](self::HTTPServer) and serving content
     /// using the added [handlers](self::HTTPHandle).
-    pub fn listen(self, port: u16) -> io::Result<()> {
+    pub fn listen(mut self, port: u16) -> io::Result<()> {
         let listener = TcpListener::bind(format!("127.0.0.1:{}", port))?;
-        let pool = ThreadPool::new(4).unwrap();
+        listener.set_nonblocking(true)?;
 
+        log::info!("HTTP Server listening at: {}", listener.local_addr()?);
+
+        let pool = ThreadPool::new(4).unwrap();
         let handles = Arc::new(self.handles);
 
         for stream in listener.incoming() {
-            let stream = stream.unwrap();
-            let handles = Arc::clone(&handles);
-            pool.execute(|| {
-                match handle_connection(handles, stream) {
-                    Err(e) => eprintln!("failed to handle connection: {}", e),
-                    Ok(_) => (),
-                };
-            });
+            match stream {
+                Ok(stream) => {
+                    let handles = Arc::clone(&handles);
+                    pool.execute(move || {
+                        match handle_connection(handles, stream) {
+                            Err(e) =>  log::error!("failed to handle connection: {}", e),
+                            Ok(_) => (),
+                        };
+                    });
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    if let Some(ref shutdown) = self.shutdown {
+                        match shutdown.try_recv() {
+                            Err(e) => {
+                                if e == mpsc::TryRecvError::Empty {
+                                    continue;
+                                }
+                                log::error!("graceful shutdown channel was set, but has an unexpected error: {}", e);
+                                self.shutdown = None;
+                            }
+                            Ok(_) => {
+                                log::info!("Graceful shutdown signal received, stopping server now...");
+                                break;
+                            }
+                        }
+                    };
+                }
+                Err(e) => {
+                    eprintln!("failed to handle connection: encountered IO error: {}", e);
+                }
+            };
         }
 
+        log::debug!("HTTP Server stopped listening!");
         Ok(())
     }
 }
 
 fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpStream) -> io::Result<()> {
     let mut buffer = [0; 1024];
-    stream.read(&mut buffer)?;
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(_) => break,
+            Err(e) => {
+                match e.kind() {
+                    io::ErrorKind::Interrupted | io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(Duration::from_millis(50));
+                        continue;
+                    }
+                    _ => return Err(e),
+                }
+            }
+        }
+    }
 
     let mut cb = move |status, opt_content: Option<&str>| -> io::Result<()> {
         let response = match opt_content {
