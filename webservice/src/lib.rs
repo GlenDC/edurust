@@ -73,11 +73,18 @@ pub type HTTPHandleCallback = Box<dyn FnMut(HTTPStatus, Option<&str>) -> io::Res
 /// in order to serve content for a static path for a specific method.
 pub type HTTPHandle = Box<dyn Fn(HTTPHandleCallback) -> io::Result<()> + Sync + Send + 'static>;
 
+// Executor used to handle a connection.
+pub type HandleExecutor = Box<dyn FnMut(HandleFn) + 'static>;
+
+// Function given to a handle executor to handle a connection.
+pub type HandleFn = Box<dyn FnOnce() + Send + 'static>;
+
 /// Minimal HTTP Server, that can be used
 /// to handle the most simple HTTP calls.
 pub struct HTTPServer {
     handles: HashMap<String, HTTPHandle>,
     shutdown: Option<mpsc::Receiver<()>>,
+    executor: Option<HandleExecutor>,
 }
 
 impl HTTPServer {
@@ -86,6 +93,7 @@ impl HTTPServer {
         HTTPServer {
             handles: HashMap::new(),
             shutdown: None,
+            executor: None,
         }
     }
 
@@ -103,8 +111,18 @@ impl HTTPServer {
         self.handles.insert(pattern, handle);
     }
 
+    /// Add a receiver that is to be send an empty value,
+    /// in order to trigger a graceful shutdown.
     pub fn set_shutdown(&mut self, r: mpsc::Receiver<()>) {
         self.shutdown = Some(r);
+    }
+
+    /// Set a custom (pool) executor that will be called to
+    /// handle a connection. Allowing you to implement a custom
+    /// thread pool instead of the default [ThreadPool][self::thread::ThreadPool],
+    /// or to even do so in a concurrent fashion.
+    pub fn set_handle_executor(&mut self, f: HandleExecutor) {
+        self.executor = Some(f);
     }
 
     /// Listen on the given local TCP port for incoming requests,
@@ -116,19 +134,28 @@ impl HTTPServer {
 
         log::info!("HTTP Server listening at: {}", listener.local_addr()?);
 
-        let pool = ThreadPool::new(4).unwrap();
+        let mut execute = match self.executor {
+            Some(e) => e,
+            None => {
+                let pool = ThreadPool::new(4).unwrap();
+                Box::new(move |f| {
+                    pool.execute(f);
+                })
+            }
+        };
+
         let handles = Arc::new(self.handles);
 
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
                     let handles = Arc::clone(&handles);
-                    pool.execute(move || {
+                    execute(Box::new(move || {
                         match handle_connection(handles, stream) {
                             Err(e) =>  log::error!("failed to handle connection: {}", e),
                             Ok(_) => (),
                         };
-                    });
+                    }));
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                     if let Some(ref shutdown) = self.shutdown {

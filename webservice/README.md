@@ -14,4 +14,5 @@ Based on the "webservice" Rust Book project as found at:
 - [x] Change calls to unwrap to more robust error handling.
 - [x] Move web server logic into library code;
 - [ ] Use ThreadPool to perform some task other than serving web requests.
-- [ ] Find a thread pool crate on crates.io and implement a similar web server using the crate instead. Then compare its API and robustness to the thread pool we implemented.
+- [x] Find a thread pool crate on crates.io and implement a similar web server using the crate instead. Then compare its API and robustness to the thread pool we implemented.
+- [ ] Fix bug in custom thread pool implementation which blocks stopping the cli app. 
