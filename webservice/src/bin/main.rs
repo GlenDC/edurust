@@ -2,9 +2,23 @@ use std::fs;
 use std::thread;
 use std::time::Duration;
 
+use clap::{AppSettings, Clap};
+
 use webservice::{HTTPServer, HTTPMethod};
 
+/// A minimal HTTP server, responding to almost nothing.
+#[derive(Clap)]
+#[clap(version = "0.1", author = "Glen DC <contact@glendc.com>")]
+#[clap(setting = AppSettings::ColoredHelp)]
+struct Opts {
+    /// port to listen to for incoming TCP traffic
+    #[clap(short, long, default_value = "7878")]
+    port: u16,
+}
+
 fn main() {
+    let opts: Opts = Opts::parse();
+
     let mut server = HTTPServer::new();
 
     server.add_handle(HTTPMethod::GET, "/", Box::new(|mut cb| {
@@ -22,7 +36,7 @@ fn main() {
         cb(403, None)
     }));
 
-    server.listen(7878).unwrap();
+    server.listen(opts.port).unwrap();
 
     println!("Shutting down.");
 }
