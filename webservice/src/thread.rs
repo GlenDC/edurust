@@ -206,9 +206,4 @@ mod tests {
     fn test_valid_size_pool() {
         ThreadPool::new(1).unwrap();
     }
-
-    #[test]
-    fn test_work_is_executed() {
-        panic!("TODO");
-    }
 }
