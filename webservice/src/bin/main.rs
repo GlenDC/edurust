@@ -4,10 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use clap::{AppSettings, Clap};
-use ctrlc;
 use env_logger::Builder;
-use log;
-use threadpool;
 
 use webservice::{HTTPMethod, HTTPServer, HandleFn};
 
