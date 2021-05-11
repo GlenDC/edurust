@@ -10,7 +10,7 @@
 //! ```
 //! use webservice::{HTTPServer, HTTPMethod};
 //!
-//! let mut server = HTTPServer::new();
+//! let mut server: HTTPServer = Default::default();
 //!
 //! server.add_handle(HTTPMethod::Get, "/", Box::new(|mut cb| {
 //!     cb(200, Some(r#"<!DOCTYPE html>
@@ -86,6 +86,12 @@ pub struct HTTPServer {
     executor: Option<HandleExecutor>,
 }
 
+impl Default for HTTPServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HTTPServer {
     /// Create a new HTTP Server.
     pub fn new() -> HTTPServer {
@@ -106,7 +112,7 @@ impl HTTPServer {
     /// - Path won't be matched if query parameters were given by the user;
     /// - Existing handle with same path and method will be overwritten in silence.
     pub fn add_handle(&mut self, method: HTTPMethod, path: &str, handle: HTTPHandle) {
-        let pattern = String::from(format!("{} {} HTTP/1.1\r\n", method, path));
+        let pattern = format!("{} {} HTTP/1.1\r\n", method, path);
         self.handles.insert(pattern, handle);
     }
 
@@ -150,10 +156,9 @@ impl HTTPServer {
                 Ok(stream) => {
                     let handles = Arc::clone(&handles);
                     execute(Box::new(move || {
-                        match handle_connection(handles, stream) {
-                            Err(e) => log::error!("failed to handle connection: {}", e),
-                            Ok(_) => (),
-                        };
+                        if let Err(e) = handle_connection(handles, stream) {
+                            log::error!("failed to handle connection: {}", e);
+                        }
                     }));
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -219,7 +224,7 @@ fn handle_connection(
             None => format!("HTTP/1.1 {}\n\r\n", status),
         };
 
-        stream.write(response.as_bytes())?;
+        stream.write_all(response.as_bytes())?;
         stream.flush()
     };
 

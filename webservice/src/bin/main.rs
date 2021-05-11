@@ -61,7 +61,7 @@ fn main() {
     Builder::new().filter_level(log_filter).init();
 
     // create the HTTP server
-    let mut server = HTTPServer::new();
+    let mut server: HTTPServer = Default::default();
 
     // set handle executor
     match opts.handle {
