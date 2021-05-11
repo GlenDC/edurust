@@ -4,3 +4,7 @@ members = [
     "minigrep",
     "webservice",
 ]
+default-members = [
+    "minigrep",
+    "webservice",
+]
