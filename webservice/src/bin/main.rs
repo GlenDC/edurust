@@ -1,15 +1,15 @@
 use std::fs;
+use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use std::sync::mpsc;
 
-use env_logger::Builder;
-use log;
 use clap::{AppSettings, Clap};
 use ctrlc;
+use env_logger::Builder;
+use log;
 use threadpool;
 
-use webservice::{HTTPServer, HTTPMethod, HandleFn};
+use webservice::{HTTPMethod, HTTPServer, HandleFn};
 
 /// A minimal HTTP server, responding to almost nothing.
 #[derive(Clap)]
@@ -71,7 +71,7 @@ fn main() {
                 pool.execute(f);
             };
             server.set_handle_executor(Box::new(execute));
-        },
+        }
         HandleMethod::Blocked => {
             let execute = |f: HandleFn| {
                 f();
@@ -88,23 +88,34 @@ fn main() {
 
     // add all handlers
 
-    server.add_handle(HTTPMethod::GET, "/", Box::new(|mut cb| {
-        let contents = fs::read_to_string("hello.html")?;
-        cb(200, Some(&contents))
-    }));
-    server.add_handle(HTTPMethod::GET, "/sleep", Box::new(|mut cb| {
-        thread::sleep(Duration::from_secs(5));
-        let contents = fs::read_to_string("hello.html")?;
-        cb(200, Some(&contents))
-    }));
-    server.add_handle(HTTPMethod::GET, "/forbidden", Box::new(|mut cb| {
-        cb(403, None)
-    }));
+    server.add_handle(
+        HTTPMethod::Get,
+        "/",
+        Box::new(|mut cb| {
+            let contents = fs::read_to_string("hello.html")?;
+            cb(200, Some(&contents))
+        }),
+    );
+    server.add_handle(
+        HTTPMethod::Get,
+        "/sleep",
+        Box::new(|mut cb| {
+            thread::sleep(Duration::from_secs(5));
+            let contents = fs::read_to_string("hello.html")?;
+            cb(200, Some(&contents))
+        }),
+    );
+    server.add_handle(
+        HTTPMethod::Get,
+        "/forbidden",
+        Box::new(|mut cb| cb(403, None)),
+    );
 
     // add signal handling
     ctrlc::set_handler(move || {
         tx.send(()).unwrap();
-    }).expect("Error setting Ctrl-C handler");
+    })
+    .expect("Error setting Ctrl-C handler");
 
     // start the server until we stop
     server.listen(opts.port).unwrap();

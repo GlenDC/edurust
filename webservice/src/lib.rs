@@ -12,7 +12,7 @@
 //!
 //! let mut server = HTTPServer::new();
 //!
-//! server.add_handle(HTTPMethod::GET, "/", Box::new(|mut cb| {
+//! server.add_handle(HTTPMethod::Get, "/", Box::new(|mut cb| {
 //!     cb(200, Some(r#"<!DOCTYPE html>
 //! <html lang="en">
 //! <head>
@@ -40,16 +40,14 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use log;
-
 pub mod thread;
 
 use self::thread::ThreadPool;
 
 /// Typed definitions of the HTTP methods supported by this server.
 pub enum HTTPMethod {
-    GET,
-    POST,
+    Get,
+    Post,
 }
 
 /// Unrestricted HTTP Status codes, as the author is too lazy
@@ -59,8 +57,8 @@ pub type HTTPStatus = u32;
 impl fmt::Display for HTTPMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            HTTPMethod::GET => "GET",
-            HTTPMethod::POST => "POST",
+            HTTPMethod::Get => "GET",
+            HTTPMethod::Post => "POST",
         })
     }
 }

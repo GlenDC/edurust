@@ -38,8 +38,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
-use log;
-
 /// `PoolError` is the error used for any errors resulting
 /// from creating or using a [ThreadPool](self::ThreadPool).
 #[derive(Debug, PartialEq)]
