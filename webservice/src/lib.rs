@@ -187,12 +187,12 @@ impl HTTPServer {
 
 fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpStream) -> io::Result<()> {
     let mut buffer = [0; 1024];
-    loop {
+    for _ in 0..16 {  // retry a max amount of times
         match stream.read(&mut buffer) {
             Ok(_) => break,
             Err(e) => {
                 match e.kind() {
-                    io::ErrorKind::Interrupted | io::ErrorKind::WouldBlock => {
+                    io::ErrorKind::WouldBlock => {
                         std::thread::sleep(Duration::from_millis(50));
                         continue;
                     }
@@ -200,6 +200,9 @@ fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpS
                 }
             }
         }
+    }
+    if buffer[0] == 0 {
+        return Err(io::Error::from(io::ErrorKind::InvalidInput));
     }
 
     let mut cb = move |status, opt_content: Option<&str>| -> io::Result<()> {
@@ -217,10 +220,12 @@ fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpS
 
     for (pattern, handle) in handles.iter() {
         if buffer.starts_with(pattern.as_bytes()) {
+            log::debug!("TCP Request matched: {:?}", String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}'));
             return handle(Box::new(cb));
         }
     }
 
+    log::debug!("404 response for TCP Request: {:?}", String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}'));
     cb(404, Some(HTTP_CONTENT_404))
 }
 

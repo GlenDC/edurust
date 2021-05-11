@@ -172,12 +172,15 @@ struct Worker {
 impl Worker {
     fn new(id: usize, receiver:  Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv().unwrap();
+            let message = {
+                receiver.lock().unwrap().recv().unwrap()
+            };
 
             match message {
                 Message::NewJob(job) => {
                     log::debug!("Worker {} got a job; executing.", id);
                     job();
+                    log::debug!("Worker {} finished executing a job.", id);
                 }
                 Message::Terminate => {
                     log::debug!("Worker {} was told to terminate.", id);
