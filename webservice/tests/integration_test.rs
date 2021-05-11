@@ -1,5 +1,5 @@
 use std::sync::mpsc;
-use webservice::thread::{ThreadPool, Result};
+use webservice::thread::{Result, ThreadPool};
 
 #[test]
 fn test_work_is_executed() -> Result<()> {

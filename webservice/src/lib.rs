@@ -1,15 +1,15 @@
 //! A very minimal HTTP Server allowing you to server
 //! header-less content over GET/POST methods,
 //! without the ability to inspect received headers or use of query parameters.
-//! 
+//!
 //! Really a useless HTTP server, and served only to allow the author
 //! to get some experience in writing a small multi-threaded library with stored closures.
-//! 
+//!
 //! # Example
-//! 
+//!
 //! ```
 //! use webservice::{HTTPServer, HTTPMethod};
-//! 
+//!
 //! let mut server = HTTPServer::new();
 //!
 //! server.add_handle(HTTPMethod::GET, "/", Box::new(|mut cb| {
@@ -31,14 +31,14 @@
 //! // server.listen(0).unwrap();
 //! ```
 
+use std::collections::HashMap;
+use std::fmt;
 use std::io;
 use std::io::prelude::*;
-use std::time::Duration;
-use std::fmt;
-use std::sync::Arc;
-use std::sync::mpsc;
-use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream};
+use std::sync::mpsc;
+use std::sync::Arc;
+use std::time::Duration;
 
 use log;
 
@@ -67,7 +67,8 @@ impl fmt::Display for HTTPMethod {
 
 /// Callback given to any [HTTPHandle](self::HTTPHandle)
 /// giving it the ability to write a response back to the user.
-pub type HTTPHandleCallback = Box<dyn FnMut(HTTPStatus, Option<&str>) -> io::Result<()> + Sync + Send + 'static>;
+pub type HTTPHandleCallback =
+    Box<dyn FnMut(HTTPStatus, Option<&str>) -> io::Result<()> + Sync + Send + 'static>;
 
 /// Definition of an HTTP Handle that can be added to an [HTTPServer](self::HTTPServer)
 /// in order to serve content for a static path for a specific method.
@@ -101,7 +102,7 @@ impl HTTPServer {
     /// such that when the user makes a request to it,
     /// the given handle can provide the response status code
     /// and optionally also content.
-    /// 
+    ///
     /// Note:
     /// - No headers can be given;
     /// - Path won't be matched if query parameters were given by the user;
@@ -152,7 +153,7 @@ impl HTTPServer {
                     let handles = Arc::clone(&handles);
                     execute(Box::new(move || {
                         match handle_connection(handles, stream) {
-                            Err(e) =>  log::error!("failed to handle connection: {}", e),
+                            Err(e) => log::error!("failed to handle connection: {}", e),
                             Ok(_) => (),
                         };
                     }));
@@ -168,7 +169,9 @@ impl HTTPServer {
                                 self.shutdown = None;
                             }
                             Ok(_) => {
-                                log::info!("Graceful shutdown signal received, stopping server now...");
+                                log::info!(
+                                    "Graceful shutdown signal received, stopping server now..."
+                                );
                                 break;
                             }
                         }
@@ -185,20 +188,22 @@ impl HTTPServer {
     }
 }
 
-fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpStream) -> io::Result<()> {
+fn handle_connection(
+    handles: Arc<HashMap<String, HTTPHandle>>,
+    mut stream: TcpStream,
+) -> io::Result<()> {
     let mut buffer = [0; 1024];
-    for _ in 0..16 {  // retry a max amount of times
+    for _ in 0..16 {
+        // retry a max amount of times
         match stream.read(&mut buffer) {
             Ok(_) => break,
-            Err(e) => {
-                match e.kind() {
-                    io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_millis(50));
-                        continue;
-                    }
-                    _ => return Err(e),
+            Err(e) => match e.kind() {
+                io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(50));
+                    continue;
                 }
-            }
+                _ => return Err(e),
+            },
         }
     }
     if buffer[0] == 0 {
@@ -209,7 +214,9 @@ fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpS
         let response = match opt_content {
             Some(content) => format!(
                 "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
-                status, content.len(), content,
+                status,
+                content.len(),
+                content,
             ),
             None => format!("HTTP/1.1 {}\n\r\n", status),
         };
@@ -220,12 +227,18 @@ fn handle_connection(handles: Arc<HashMap<String, HTTPHandle>>, mut stream: TcpS
 
     for (pattern, handle) in handles.iter() {
         if buffer.starts_with(pattern.as_bytes()) {
-            log::debug!("TCP Request matched: {:?}", String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}'));
+            log::debug!(
+                "TCP Request matched: {:?}",
+                String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}')
+            );
             return handle(Box::new(cb));
         }
     }
 
-    log::debug!("404 response for TCP Request: {:?}", String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}'));
+    log::debug!(
+        "404 response for TCP Request: {:?}",
+        String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}')
+    );
     cb(404, Some(HTTP_CONTENT_404))
 }
 

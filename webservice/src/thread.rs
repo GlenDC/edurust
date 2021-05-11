@@ -2,16 +2,16 @@
 //! allowing you to run different tasks in parallel,
 //! while at the same time remaining in control on the max amount
 //! of threads to be used at any given point.
-//! 
-//! 
+//!
+//!
 //! # Example
-//! 
+//!
 //! ```
 //! # use std::thread;
 //! # use std::time::{Duration, Instant};
 //! # use webservice::thread::Result;
 //! use webservice::thread::ThreadPool;
-//! 
+//!
 //! # fn main() -> Result<()> {
 //! # let start = Instant::now();
 //! println!("create pool and do some work");
@@ -33,10 +33,10 @@
 
 use std::fmt;
 use std::result;
-use std::thread;
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::mpsc;
+use std::thread;
 
 use log;
 
@@ -59,7 +59,7 @@ pub enum PoolErrorKind {
     /// [ThreadPool](self::ThreadPool), refer to the
     /// documentation of [ThreadPool::new](self::ThreadPool::new)
     /// to find what size is appropriate.
-    InvalidSize
+    InvalidSize,
 }
 
 /// Result alias type used for all functions within this create which
@@ -76,7 +76,7 @@ impl fmt::Display for PoolError {
 /// A pool of pre-allocated threads ready to execute work.
 /// This allows you to put an upper limit of how many threads can be used
 /// at any given time.
-/// 
+///
 /// A useful example is a WebService which limits the amount of concurrent requests
 /// it will handle in order to not expose itself to a DDoS attack.
 pub struct ThreadPool {
@@ -86,16 +86,16 @@ pub struct ThreadPool {
 
 impl ThreadPool {
     /// Create a new ThreadPool.
-    /// 
+    ///
     /// The size is the number of threads in the pool.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// A [PoolError](self::PoolError) is returned with kind [PoolErrorKind::InvalidSize](self::PoolErrorKind::InvalidSize)
     /// if a size of 0 is given, all strictly positive integers can be used as a valid size up to the max usize value.
     pub fn new(size: usize) -> Result<ThreadPool> {
         if size == 0 {
-            return Err(PoolError{
+            return Err(PoolError {
                 kind: PoolErrorKind::InvalidSize,
                 message: "pool size has to be within the inclusive range of [1, usize::max]",
             });
@@ -151,9 +151,7 @@ impl Drop for ThreadPool {
 impl fmt::Debug for ThreadPool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let size = self.workers.len();
-        f.debug_struct("ThreadPool")
-         .field("size", &size)
-         .finish()
+        f.debug_struct("ThreadPool").field("size", &size).finish()
     }
 }
 
@@ -170,11 +168,9 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, receiver:  Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            let message = {
-                receiver.lock().unwrap().recv().unwrap()
-            };
+            let message = { receiver.lock().unwrap().recv().unwrap() };
 
             match message {
                 Message::NewJob(job) => {
@@ -202,7 +198,10 @@ mod tests {
 
     #[test]
     fn test_invalid_size_pool() {
-        assert_eq!(ThreadPool::new(0).unwrap_err().kind, PoolErrorKind::InvalidSize);
+        assert_eq!(
+            ThreadPool::new(0).unwrap_err().kind,
+            PoolErrorKind::InvalidSize
+        );
     }
 
     #[test]

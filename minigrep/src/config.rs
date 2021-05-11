@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::error::{Error};
+use crate::error::Error;
 
 pub struct Config {
     query: String,
@@ -19,10 +19,14 @@ impl Config {
 
         // read env args
         let case_insensitive = env::var("CASE_INSENSITIVE")
-            .map(|v| vec!["1", "true", "ok"].iter().any(|t| v.to_lowercase() == t.to_lowercase()))
+            .map(|v| {
+                vec!["1", "true", "ok"]
+                    .iter()
+                    .any(|t| v.to_lowercase() == t.to_lowercase())
+            })
             .unwrap_or(false);
 
-        Ok(Config{
+        Ok(Config {
             query,
             filename,
             case_insensitive,
