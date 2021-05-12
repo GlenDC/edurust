@@ -6,7 +6,7 @@ use std::time::Duration;
 use clap::{AppSettings, Clap};
 use env_logger::Builder;
 
-use webservice::{HTTPMethod, HTTPServer, HandleFn};
+use webservice::{HTTPMethod, HTTPServer, HandleFn, HTTPResponse};
 
 /// A minimal HTTP server, responding to almost nothing.
 #[derive(Clap)]
@@ -88,24 +88,24 @@ fn main() {
     server.add_handle(
         HTTPMethod::Get,
         "/",
-        Box::new(|mut cb| {
+        Box::new(|| {
             let contents = fs::read_to_string("hello.html")?;
-            cb(200, Some(&contents))
+            Ok(HTTPResponse::new(200).with_content(&contents))
         }),
     );
     server.add_handle(
         HTTPMethod::Get,
         "/sleep",
-        Box::new(|mut cb| {
+        Box::new(|| {
             thread::sleep(Duration::from_secs(5));
             let contents = fs::read_to_string("hello.html")?;
-            cb(200, Some(&contents))
+            Ok(HTTPResponse::new(200).with_content(&contents))
         }),
     );
     server.add_handle(
         HTTPMethod::Get,
         "/forbidden",
-        Box::new(|mut cb| cb(403, None)),
+        Box::new(|| Ok(HTTPResponse::new(403))),
     );
 
     // add signal handling

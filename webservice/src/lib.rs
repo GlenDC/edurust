@@ -8,12 +8,12 @@
 //! # Example
 //!
 //! ```
-//! use webservice::{HTTPServer, HTTPMethod};
-//!
+//! use webservice::{HTTPServer, HTTPMethod, HTTPResponse};
+//! 
 //! let mut server: HTTPServer = Default::default();
-//!
-//! server.add_handle(HTTPMethod::Get, "/", Box::new(|mut cb| {
-//!     cb(200, Some(r#"<!DOCTYPE html>
+//! 
+//! server.add_handle(HTTPMethod::Get, "/", Box::new(|| {
+//!     Ok(HTTPResponse::new(200).with_content(r#"<!DOCTYPE html>
 //! <html lang="en">
 //! <head>
 //!   <meta charset="utf-8">
@@ -26,7 +26,7 @@
 //! </html>
 //! "#))
 //! }));
-//!
+//! 
 //! // Start to listen:
 //! // server.listen(0).unwrap();
 //! ```
@@ -63,14 +63,56 @@ impl fmt::Display for HTTPMethod {
     }
 }
 
-/// Callback given to any [HTTPHandle](self::HTTPHandle)
-/// giving it the ability to write a response back to the user.
-pub type HTTPHandleCallback =
-    Box<dyn FnMut(HTTPStatus, Option<&str>) -> io::Result<()>>;
+/// Response returned by an [HTTPHandle](self::HTTPHandle),
+/// defining the status and optionally also content.
+/// 
+/// Only UTF-8 content is supported for simplicity sake.
+/// For the same reason headers aren't supported either.
+pub struct HTTPResponse {
+    status: HTTPStatus,
+    content: Option<String>,
+}
+
+impl HTTPResponse {
+    /// Create a new [HTTPResponse](self::HTTPResponse) for
+    /// a given [HTTPStatus](self::HTTPStatus),
+    /// if content is desired as well it will have to set
+    /// using the provided builder [with_content](self::HTTPResponse::with_content) method.
+    pub fn new(status: HTTPStatus) -> HTTPResponse {
+        HTTPResponse {
+            status,
+            content: None,
+        }
+    }
+
+    /// Consume this [HTTPResponse](self::HTTPResponse) and return
+    /// a new response with (UTF-8) content added to it.
+    pub fn with_content(self, content: &str) -> HTTPResponse {
+        HTTPResponse {
+            content: Some(String::from(content)),
+            ..self
+        }
+    }
+}
+
+impl fmt::Display for HTTPResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let content = match &self.content {
+            Some(content) => format!(
+                "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
+                self.status,
+                content.len(),
+                content,
+            ),
+            None => format!("HTTP/1.1 {}\n\r\n", self.status),
+        };
+        f.write_str(&content)
+    }
+}
 
 /// Definition of an HTTP Handle that can be added to an [HTTPServer](self::HTTPServer)
 /// in order to serve content for a static path for a specific method.
-pub type HTTPHandle = Box<dyn Fn(HTTPHandleCallback) -> io::Result<()> + Sync + Send>;
+pub type HTTPHandle = Box<dyn Fn() -> io::Result<HTTPResponse> + Sync + Send>;
 
 // Executor used to handle a connection.
 pub type HandleExecutor = Box<dyn FnMut(HandleFn)>;
@@ -213,20 +255,7 @@ fn handle_connection(
         return Err(io::Error::from(io::ErrorKind::InvalidInput));
     }
 
-    let mut cb = move |status, opt_content: Option<&str>| -> io::Result<()> {
-        let response = match opt_content {
-            Some(content) => format!(
-                "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
-                status,
-                content.len(),
-                content,
-            ),
-            None => format!("HTTP/1.1 {}\n\r\n", status),
-        };
-
-        stream.write_all(response.as_bytes())?;
-        stream.flush()
-    };
+    let mut response = None;
 
     for (pattern, handle) in handles.iter() {
         if buffer.starts_with(pattern.as_bytes()) {
@@ -234,7 +263,7 @@ fn handle_connection(
                 "TCP Request matched: {:?}",
                 String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}')
             );
-            return handle(Box::new(cb));
+            response = Some(handle()?)
         }
     }
 
@@ -242,7 +271,13 @@ fn handle_connection(
         "404 response for TCP Request: {:?}",
         String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}')
     );
-    cb(404, Some(HTTP_CONTENT_404))
+
+    let content = format!("{}", match response {
+        Some(resp) => resp,
+        None => HTTPResponse::new(404).with_content(HTTP_CONTENT_404),
+    });
+    stream.write_all(content.as_bytes())?;
+    stream.flush()
 }
 
 const HTTP_CONTENT_404: &str = r#"<!DOCTYPE html>
