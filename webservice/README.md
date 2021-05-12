@@ -15,5 +15,5 @@ Based on the "webservice" Rust Book project as found at:
 - [x] Use ThreadPool to perform some task other than serving web requests.
 - [x] Find a thread pool crate on crates.io and implement a similar web server using the crate instead. Then compare its API and robustness to the thread pool we implemented.
 - [x] Fix bug in custom thread pool implementation which blocks stopping the cli app.
-- [ ] Learn to use the debugger for Rust in VSCode.
+- [x] Learn to use the debugger for Rust in VSCode.
 - [x] Enable CI testing (GitHub workflow).
