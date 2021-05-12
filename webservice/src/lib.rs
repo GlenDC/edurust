@@ -234,7 +234,7 @@ impl HTTPServer {
 }
 
 fn create_pattern(method: HTTPMethod, path: &str) -> String {
-    if path == "" {
+    if path.is_empty() {
         return create_pattern(method, "/");
     }
     format!("{} {} HTTP/1.1\r\n", method, path)
