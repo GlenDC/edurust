@@ -66,17 +66,17 @@ impl fmt::Display for HTTPMethod {
 /// Callback given to any [HTTPHandle](self::HTTPHandle)
 /// giving it the ability to write a response back to the user.
 pub type HTTPHandleCallback =
-    Box<dyn FnMut(HTTPStatus, Option<&str>) -> io::Result<()> + Sync + Send + 'static>;
+    Box<dyn FnMut(HTTPStatus, Option<&str>) -> io::Result<()>>;
 
 /// Definition of an HTTP Handle that can be added to an [HTTPServer](self::HTTPServer)
 /// in order to serve content for a static path for a specific method.
-pub type HTTPHandle = Box<dyn Fn(HTTPHandleCallback) -> io::Result<()> + Sync + Send + 'static>;
+pub type HTTPHandle = Box<dyn Fn(HTTPHandleCallback) -> io::Result<()> + Sync + Send>;
 
 // Executor used to handle a connection.
-pub type HandleExecutor = Box<dyn FnMut(HandleFn) + 'static>;
+pub type HandleExecutor = Box<dyn FnMut(HandleFn)>;
 
 // Function given to a handle executor to handle a connection.
-pub type HandleFn = Box<dyn FnOnce() + Send + 'static>;
+pub type HandleFn = Box<dyn FnOnce() + Send>;
 
 /// Minimal HTTP Server, that can be used
 /// to handle the most simple HTTP calls.
