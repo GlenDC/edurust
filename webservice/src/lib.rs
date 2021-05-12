@@ -35,7 +35,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io;
 use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -104,7 +104,7 @@ impl fmt::Display for HTTPResponse {
                 content.len(),
                 content,
             ),
-            None => format!("HTTP/1.1 {}\n\r\n", self.status),
+            None => format!("HTTP/1.1 {}\r\n\r\n", self.status),
         };
         f.write_str(&content)
     }
@@ -154,7 +154,7 @@ impl HTTPServer {
     /// - Path won't be matched if query parameters were given by the user;
     /// - Existing handle with same path and method will be overwritten in silence.
     pub fn add_handle(&mut self, method: HTTPMethod, path: &str, handle: HTTPHandle) {
-        let pattern = format!("{} {} HTTP/1.1\r\n", method, path);
+        let pattern = create_pattern(method, path);
         self.handles.insert(pattern, handle);
     }
 
@@ -233,9 +233,16 @@ impl HTTPServer {
     }
 }
 
+fn create_pattern(method: HTTPMethod, path: &str) -> String {
+    if path == "" {
+        return create_pattern(method, "/");
+    }
+    format!("{} {} HTTP/1.1\r\n", method, path)
+}
+
 fn handle_connection(
     handles: Arc<HashMap<String, HTTPHandle>>,
-    mut stream: TcpStream,
+    mut stream: impl Read + Write,
 ) -> io::Result<()> {
     let mut buffer = [0; 1024];
     for _ in 0..16 {
@@ -292,3 +299,53 @@ const HTTP_CONTENT_404: &str = r#"<!DOCTYPE html>
   </body>
 </html>
 "#;
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_pattern() {
+        assert_eq!(
+            String::from("GET / HTTP/1.1\r\n"),
+            create_pattern(HTTPMethod::Get, ""),
+        );
+        assert_eq!(
+            String::from("GET / HTTP/1.1\r\n"),
+            create_pattern(HTTPMethod::Get, "/"),
+        );
+        assert_eq!(
+            String::from("POST / HTTP/1.1\r\n"),
+            create_pattern(HTTPMethod::Post, "/"),
+        );
+        assert_eq!(
+            String::from("POST /foo/bar HTTP/1.1\r\n"),
+            create_pattern(HTTPMethod::Post, "/foo/bar"),
+        );
+        // simple, not even path validation
+        assert_eq!(
+            String::from("POST 123_invalid@path-yeah HTTP/1.1\r\n"),
+            create_pattern(HTTPMethod::Post, "123_invalid@path-yeah"),
+        );
+    }
+
+    #[test]
+    fn test_http_response_to_string_no_content() {
+        assert_eq!(
+            String::from("HTTP/1.1 403\r\n\r\n"),
+            format!("{}", HTTPResponse::new(403)),
+        );
+    }
+
+    #[test]
+    fn test_http_response_to_string_with_content() {
+        assert_eq!(
+            String::from("HTTP/1.1 200\r\nContent-Length: 13\r\n\r\nHello, World!"),
+            format!("{}", HTTPResponse::new(200).with_content("Hello, World!")),
+        );
+    }
+
+    // TODO:
+    // add tests for handle_connection function :) (use tokio's mockstream for this)
+}
