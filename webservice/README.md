@@ -9,7 +9,7 @@ Based on the "webservice" Rust Book project as found at:
 - [x] Add signal handling to graceful handle such quit
 - [x] Add tests of the library’s ThreadPool functionality.
 - [x] Add decent logging support.
-- [ ] Add tests of the library’s HTTPServer functionality.
+- [x] Add tests of the library’s HTTPServer functionality.
 - [x] Change calls to unwrap to more robust error handling.
 - [x] Move web server logic into library code;
 - [x] Use ThreadPool to perform some task other than serving web requests.

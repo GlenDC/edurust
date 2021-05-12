@@ -348,6 +348,127 @@ mod tests {
         );
     }
 
-    // TODO:
-    // add tests for handle_connection function :) (use tokio's mockstream for this)
+    #[derive(Debug, Default)]
+    struct ReadWriteMock {
+        data_to_read: String,
+        written_data: String,
+        written_data_flushed: String,
+    }
+
+    impl ReadWriteMock {
+        fn clear(&mut self) {
+            self.data_to_read.clear();
+            self.written_data.clear();
+            self.written_data_flushed.clear();
+        }
+    }
+
+    impl io::Read for ReadWriteMock {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            if self.data_to_read.is_empty() {
+                return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+            }
+            let len = usize::min(buf.len(), self.data_to_read.len());
+            let slice = self.data_to_read.as_bytes();
+            buf[..len].copy_from_slice(&slice[..len]);
+            self.data_to_read = String::from(match std::str::from_utf8(&slice[len..]) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Err(io::Error::from(io::ErrorKind::InvalidInput));
+                }
+            });
+            Ok(len)
+        }
+    }
+
+    impl io::Write for ReadWriteMock {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.written_data += match std::str::from_utf8(buf) {
+                Ok(v) => v,
+                Err(_) => {
+                    return Err(io::Error::from(io::ErrorKind::InvalidInput));
+                }
+            };
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.written_data_flushed += self.written_data.as_str();
+            self.written_data.clear();
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_handle_connection_empty_handles() -> io::Result<()> {
+        let handles = Arc::new(HashMap::new());
+        let mut stream: ReadWriteMock = Default::default();
+
+        stream.data_to_read = create_pattern(HTTPMethod::Get, "");
+
+        handle_connection(Arc::clone(&handles), &mut stream)?;
+        assert_eq!("", stream.data_to_read);
+        assert_eq!("", stream.written_data);
+        assert_eq!(
+            stream.written_data_flushed,
+            format!(
+                "HTTP/1.1 404\r\nContent-Length: {}\r\n\r\n{}",
+                HTTP_CONTENT_404.len(),
+                HTTP_CONTENT_404,
+            )
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_handle_connection_with_handles() -> io::Result<()> {
+        let mut map: HashMap<String, HTTPHandle> = HashMap::new();
+        map.insert(
+            create_pattern(HTTPMethod::Post, ""),
+            Box::new(|| Ok(HTTPResponse::new(200))),
+        );
+        map.insert(
+            create_pattern(HTTPMethod::Get, "/foo"),
+            Box::new(|| Ok(HTTPResponse::new(200).with_content("Foo, bar!"))),
+        );
+        let handles = Arc::new(map);
+        let mut stream: ReadWriteMock = Default::default();
+
+        stream.data_to_read = create_pattern(HTTPMethod::Get, "");
+
+        handle_connection(Arc::clone(&handles), &mut stream)?;
+        assert_eq!("", stream.data_to_read);
+        assert_eq!("", stream.written_data);
+        assert_eq!(
+            stream.written_data_flushed,
+            HTTPResponse::new(404)
+                .with_content(HTTP_CONTENT_404)
+                .to_string(),
+        );
+
+        stream.clear();
+        stream.data_to_read = create_pattern(HTTPMethod::Get, "/foo");
+
+        handle_connection(Arc::clone(&handles), &mut stream)?;
+        assert_eq!("", stream.data_to_read);
+        assert_eq!("", stream.written_data);
+        assert_eq!(
+            stream.written_data_flushed,
+            HTTPResponse::new(200).with_content("Foo, bar!").to_string(),
+        );
+
+        stream.clear();
+        stream.data_to_read = create_pattern(HTTPMethod::Post, "/");
+
+        handle_connection(Arc::clone(&handles), &mut stream)?;
+        assert_eq!("", stream.data_to_read);
+        assert_eq!("", stream.written_data);
+        assert_eq!(
+            stream.written_data_flushed,
+            HTTPResponse::new(200).to_string(),
+        );
+
+        Ok(())
+    }
 }
