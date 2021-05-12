@@ -6,7 +6,7 @@ use std::time::Duration;
 use clap::{AppSettings, Clap};
 use env_logger::Builder;
 
-use webservice::{HTTPMethod, HTTPServer, HandleFn, HTTPResponse};
+use webservice::{HTTPMethod, HTTPResponse, HTTPServer, HandleFn};
 
 /// A minimal HTTP server, responding to almost nothing.
 #[derive(Clap)]

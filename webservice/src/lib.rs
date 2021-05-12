@@ -9,9 +9,9 @@
 //!
 //! ```
 //! use webservice::{HTTPServer, HTTPMethod, HTTPResponse};
-//! 
+//!
 //! let mut server: HTTPServer = Default::default();
-//! 
+//!
 //! server.add_handle(HTTPMethod::Get, "/", Box::new(|| {
 //!     Ok(HTTPResponse::new(200).with_content(r#"<!DOCTYPE html>
 //! <html lang="en">
@@ -26,7 +26,7 @@
 //! </html>
 //! "#))
 //! }));
-//! 
+//!
 //! // Start to listen:
 //! // server.listen(0).unwrap();
 //! ```
@@ -65,7 +65,7 @@ impl fmt::Display for HTTPMethod {
 
 /// Response returned by an [HTTPHandle](self::HTTPHandle),
 /// defining the status and optionally also content.
-/// 
+///
 /// Only UTF-8 content is supported for simplicity sake.
 /// For the same reason headers aren't supported either.
 pub struct HTTPResponse {
@@ -279,10 +279,13 @@ fn handle_connection(
         String::from_utf8_lossy(&buffer).trim_end_matches('\u{0}')
     );
 
-    let content = format!("{}", match response {
-        Some(resp) => resp,
-        None => HTTPResponse::new(404).with_content(HTTP_CONTENT_404),
-    });
+    let content = format!(
+        "{}",
+        match response {
+            Some(resp) => resp,
+            None => HTTPResponse::new(404).with_content(HTTP_CONTENT_404),
+        }
+    );
     stream.write_all(content.as_bytes())?;
     stream.flush()
 }
@@ -299,7 +302,6 @@ const HTTP_CONTENT_404: &str = r#"<!DOCTYPE html>
   </body>
 </html>
 "#;
-
 
 #[cfg(test)]
 mod tests {
