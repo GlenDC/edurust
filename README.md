@@ -30,7 +30,6 @@ Use this as your `launch.json` file:
       "console": "internalConsole",
       "cwd": "${workspaceRoot}/webservice",
       "sourceLanguages": ["rust"],
-      // "preLaunchTask": "build",
       "cargo": {
         "args": ["build", "--bin=webservice"]
       }
