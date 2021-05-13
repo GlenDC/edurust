@@ -3,4 +3,5 @@
 members = [
     "minigrep",
     "webservice",
+    "webservice-async",
 ]
