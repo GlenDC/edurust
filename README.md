@@ -6,6 +6,24 @@ Are the tests passing?
 A repo containing small projects that were build by the author,
 with as only purpose to get comfortable with Rust and Experiment with it.
 
+## Most important learning company material used
+
+- ["The Rust Book"](https://doc.rust-lang.org/book/);
+- [Rust by Example Book](https://doc.rust-lang.org/stable/rust-by-example/);
+  - Read and played with it after reading "the book", great extra piece of information,
+    filled some gaps and made certain things more clear;
+- [The std docs](https://doc.rust-lang.org/book/);
+  - FYI: you can also generate docs for your project and all its dependencies locally and focussed using `cargo doc --open`;
+- [The Cargo Book](https://doc.rust-lang.org/cargo/index.html);
+- [The Rust CLI Book](https://rust-cli.github.io/book/index.html);
+- [The Rust Async Book](https://rust-lang.github.io/async-book/);
+  - This book was unfinished at the time of using it, but so is async in general for Rust;
+
+Scrolled through but not in depth:
+
+- [The Rust Reference](https://doc.rust-lang.org/reference/index.html);
+- [The 'nomicon](https://doc.rust-lang.org/nomicon/index.html);
+
 ## Debug Rust & VSCode
 
 How do you debug rust with vscode?
