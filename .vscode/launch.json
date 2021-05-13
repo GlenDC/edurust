@@ -1,0 +1,52 @@
+{
+    "version": "0.2.0",
+    "configurations": [{
+        "name": "Launch webservice",
+        "type": "lldb",
+        "request": "launch",
+        "program": "${workspaceRoot}/target/debug/webservice",
+        "args": [],
+        "console": "internalConsole",
+        "cwd": "${workspaceRoot}/webservice",
+        "sourceLanguages": ["rust"],
+        "cargo": {
+            "args": ["build", "--bin=webservice"],
+        },
+    }, {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug Test WebService",
+        "cargo": {
+            "args": [
+                "test",
+                "--no-run",
+            ],
+            "filter": {
+                "name": "webservice",
+                "kind": "lib"
+            }
+        },
+        "args": ["${selectedText}"],
+        "cwd": "${workspaceRoot}",
+        "console": "internalConsole",
+        "sourceLanguages": ["rust"],
+    }, {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug Test WebService Integration",
+        "cargo": {
+            "args": [
+                "test",
+                "--no-run",
+            ],
+            "filter": {
+                "name": "integration_test",
+                "kind": "test"
+            }
+        },
+        "args": ["${selectedText}"],
+        "cwd": "${workspaceRoot}",
+        "console": "internalConsole",
+        "sourceLanguages": ["rust"],
+    }, ],
+}
