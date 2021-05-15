@@ -13,6 +13,30 @@
             "args": ["build", "--bin=webservice"],
         },
     }, {
+        "name": "Launch webservice-async",
+        "type": "lldb",
+        "request": "launch",
+        "program": "${workspaceRoot}/target/debug/webservice-async",
+        "args": [],
+        "console": "internalConsole",
+        "cwd": "${workspaceRoot}/webservice-async",
+        "sourceLanguages": ["rust"],
+        "cargo": {
+            "args": ["build", "--bin=webservice-async"],
+        },
+    }, {
+        "name": "Launch webservice-hyper",
+        "type": "lldb",
+        "request": "launch",
+        "program": "${workspaceRoot}/target/debug/webservice-hyper",
+        "args": [],
+        "console": "internalConsole",
+        "cwd": "${workspaceRoot}/webservice-hyper",
+        "sourceLanguages": ["rust"],
+        "cargo": {
+            "args": ["build", "--bin=webservice-hyper"],
+        },
+    }, {
         "type": "lldb",
         "request": "launch",
         "name": "Debug Test WebService",
