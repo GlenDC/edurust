@@ -10,6 +10,10 @@ use std::time::Duration;
 #[async_std::main]
 async fn main() {
     // Listen for incoming TCP connections on localhost port 7878
+    // NOTE: it is important to keep in mind that even though we run via async code,
+    // if our operations used in async functions are blocking (sync), they'll
+    // never release control and as such still block the entire thread.
+    // This is the key pragmatic difference with true parallelism.
     let listener = TcpListener::bind("127.0.0.1:7878").await.unwrap();
 
     listener
