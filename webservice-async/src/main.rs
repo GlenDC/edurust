@@ -18,6 +18,7 @@ fn main() {
 fn handle_connection(mut stream: TcpStream) {
     // Read the first 1024 bytes of data from the stream
     let mut buffer = [0; 1024];
+    #[allow(clippy::unused_io_amount)]
     stream.read(&mut buffer).unwrap();
 
     let get = b"GET / HTTP/1.1\r\n";
@@ -34,6 +35,6 @@ fn handle_connection(mut stream: TcpStream) {
     // Write response back to the stream,
     // and flush the stream to ensure the response is sent back to the client
     let response = format!("{}{}", status_line, contents);
-    stream.write(response.as_bytes()).unwrap();
+    stream.write_all(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 }
